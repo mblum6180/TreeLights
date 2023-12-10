@@ -45,16 +45,17 @@ void loop() {
       previousMillis[home] = currentMillis;
 
       // Toggle the state of the home
-      bool newState = !homeState[home];
+      homeState[home] = !homeState[home];
 
       // Fade out if currently on, fade in if currently off
       if (homeState[home]) {
-        fadeLights(home, homeColors[home], false); // Fade out
-      } else {
+        // If turning on, fade in with the current color
         fadeLights(home, homeColors[home], true); // Fade in
+      } else {
+        // If turning off, first fade out, then change the color
+        fadeLights(home, homeColors[home], false); // Fade out
+        homeColors[home] = generateNewColor(); // Assign a new color for next time
       }
-
-      homeState[home] = newState;
 
       // Update the interval for this home based on its new state
       updateIntervalForHome(home, homeState[home]);
@@ -69,15 +70,15 @@ void updateIntervalForHome(int home, bool isCurrentlyOn) {
 
   if (isCurrentlyOn) {
     // If the lights are currently on, set a shorter interval for turning them off
-    long baseInterval = 15 * 1000; // 15 minutes in milliseconds 60000 1000 for dubuging
-    long variation = random(0, 30000); // Variation of up to 30 seconds
+    long baseInterval = 10 * 60000; // 15 minutes in milliseconds 60000 1000 for dubuging
+    long variation = random(0, 20 * 60000); // Variation of up to 30 seconds
     intervals[home] = baseInterval + variation; 
 
 
   } else {
     // If the lights are currently off, set a longer interval for turning them on
-    long baseInterval = 1 * 1000; // 15 minutes in milliseconds 60000 1000 for dubuging
-    long variation = random(0, 1000); // Variation of up to 30 seconds
+    long baseInterval = 1 * 60000; // 15 minutes in milliseconds 60000 1000 for dubuging
+    long variation = random(0, 4 * 60000); // Variation of up to 30 seconds
     intervals[home] = baseInterval + variation; 
   }
 }
@@ -99,4 +100,19 @@ void fadeLights(int home, CRGB targetColor, bool fadeIn) {
     FastLED.show();
     delay(fadeDelay);
   }
+}
+
+CRGB generateNewColor() {
+  // Define a Christmas palette
+  const CRGB christmasPalette[] = {
+    CRGB::Red,
+    CRGB::Green,
+    CRGB::Purple,
+    CRGB::Gold,
+    CRGB::Blue
+  };
+  const int christmasPaletteSize = sizeof(christmasPalette) / sizeof(christmasPalette[0]);
+
+  // Pick and return a random color from the Christmas palette
+  return christmasPalette[random(0, christmasPaletteSize)];
 }
