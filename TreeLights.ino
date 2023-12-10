@@ -1,29 +1,33 @@
-#include <Adafruit_NeoPixel.h>
+#include <FastLED.h>
 
 #define LED_PIN     6
 #define LED_COUNT  14
 #define HOME_COUNT 5
 
-Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
+#define COLOR_ORDER GRB
+#define CHIPSET     WS2812
+
+CRGB leds[LED_COUNT];
 
 unsigned long previousMillis[HOME_COUNT] = {0};
 long onInterval[HOME_COUNT];
 long offInterval[HOME_COUNT];
 bool isFadingIn[HOME_COUNT] = {false};
-uint32_t homeColors[HOME_COUNT];
+CRGB homeColors[HOME_COUNT];
 int brightness[HOME_COUNT] = {0};
 int fadeAmount = 5;  // Amount by which the brightness changes
 
 void setup() {
-  strip.begin();
-  strip.show();
+  FastLED.addLeds<CHIPSET, LED_PIN, COLOR_ORDER>(leds, LED_COUNT);
+  FastLED.clear();
+  FastLED.show();
   
   // Define colors for each home
-  homeColors[0] = strip.Color(255, 0, 0); // Red
-  homeColors[1] = strip.Color(0, 255, 0); // Green
-  homeColors[2] = strip.Color(0, 0, 255); // Blue
-  homeColors[3] = strip.Color(255, 255, 0); // Yellow
-  homeColors[4] = strip.Color(255, 105, 180); // Pink
+  homeColors[0] = CRGB::Red;
+  homeColors[1] = CRGB::Green;
+  homeColors[2] = CRGB::Blue;
+  homeColors[3] = CRGB::Yellow;
+  homeColors[4] = CRGB(255, 105, 180); // Pink
 
   for(int i = 0; i < HOME_COUNT; i++) {
     onInterval[i] = random(300000, 900000);
@@ -46,6 +50,7 @@ void loop() {
         fadeLights(home);
     }
   }
+  FastLED.show();
 }
 
 void toggleHomeLights(int home) {
@@ -57,9 +62,8 @@ void toggleHomeLights(int home) {
       isFadingIn[home] = true;
   } else {
       for(int i = startLED; i < startLED + ledCount; i++) {
-          strip.setPixelColor(i, strip.Color(0, 0, 0)); // Turn off lights
+          leds[i] = CRGB::Black; // Turn off lights
       }
-      strip.show();
       isFadingIn[home] = false;
   }
 }
@@ -73,23 +77,14 @@ void fadeLights(int home) {
       fadeAmount = -fadeAmount;  // Reverse the direction of the fading at the ends
   }
 
-  uint32_t color = dimColor(homeColors[home], brightness[home]);
+  CRGB color = dimColor(homeColors[home], brightness[home]);
   for(int i = startLED; i < startLED + ledCount; i++) {
-      strip.setPixelColor(i, color);
+      leds[i] = color;
   }
-  strip.show();
 }
 
-uint32_t dimColor(uint32_t color, int brightness) {
-  // Extract color components
-  uint8_t r = (uint8_t)(color >> 16);
-  uint8_t g = (uint8_t)(color >> 8);
-  uint8_t b = (uint8_t)color;
-  
+CRGB dimColor(CRGB color, int brightness) {
   // Adjust brightness
-  r = (r * brightness) / 255;
-  g = (g * brightness) / 255;
-  b = (b * brightness) / 255;
-
-  return strip.Color(r, g, b);
+  color.fadeToBlackBy(255 - brightness);
+  return color;
 }
