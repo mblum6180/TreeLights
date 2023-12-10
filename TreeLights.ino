@@ -1,90 +1,102 @@
 #include <FastLED.h>
 
 #define LED_PIN     6
-#define LED_COUNT  14
-#define HOME_COUNT 5
-
+#define BRIGHTNESS  64
+#define LED_TYPE    WS2812
 #define COLOR_ORDER GRB
-#define CHIPSET     WS2812
+#define NUM_HOMES   4 // Number of homes
 
-CRGB leds[LED_COUNT];
+#define NUM_LEDS    (4 + 2 * (NUM_HOMES - 1)) // Calculate number of LEDs
 
-unsigned long previousMillis[HOME_COUNT] = {0};
-long onInterval[HOME_COUNT];
-long offInterval[HOME_COUNT];
-bool isFadingIn[HOME_COUNT] = {false};
-CRGB homeColors[HOME_COUNT];
-int brightness[HOME_COUNT] = {0};
-int fadeAmount = 5;  // Amount by which the brightness changes
+CRGB leds[NUM_LEDS];
+CRGB homeColors[NUM_HOMES]; // Array to store the color of each home
+unsigned long previousMillis[NUM_HOMES]; // Store last time each home's LED was updated
+long intervals[NUM_HOMES]; // Intervals at which each home blinks (milliseconds)
+bool homeState[NUM_HOMES]; // Array to store the state (on/off) of each home
 
 void setup() {
-  FastLED.addLeds<CHIPSET, LED_PIN, COLOR_ORDER>(leds, LED_COUNT);
+  FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
+  FastLED.setBrightness(BRIGHTNESS);
+  fill_solid(leds, NUM_LEDS, CRGB::White);
+  FastLED.show();
+  delay(1000);
   FastLED.clear();
   FastLED.show();
-  
-  // Define colors for each home
-  homeColors[0] = CRGB::Red;
-  homeColors[1] = CRGB::Green;
-  homeColors[2] = CRGB::Blue;
-  homeColors[3] = CRGB::Yellow;
-  homeColors[4] = CRGB(255, 105, 180); // Pink
 
-  for(int i = 0; i < HOME_COUNT; i++) {
-    onInterval[i] = random(300000, 900000);
-    offInterval[i] = random(300000, 900000);
+  // Define the color and initial interval for each home
+  homeColors[0] = CRGB::Red; // First home color
+  intervals[0] = 500; // Initial interval for first home
+  for (int i = 1; i < NUM_HOMES; i++) {
+    homeColors[i] = CRGB::Green; // Other homes color
+    intervals[i] = 500 + 100 * i; // Different initial interval for each home
+  }
+
+  memset(previousMillis, 0, sizeof(previousMillis)); // Initialize all previousMillis values to 0
+  for (int i = 0; i < NUM_HOMES; i++) {
+    homeState[i] = false; // Initialize all homes to be off
   }
 }
 
 void loop() {
   unsigned long currentMillis = millis();
 
-  for(int home = 0; home < HOME_COUNT; home++) {
-    if(currentMillis - previousMillis[home] >= (isFadingIn[home] ? 30 : offInterval[home])) {
-      toggleHomeLights(home);
+  for (int home = 0; home < NUM_HOMES; home++) {
+    if (currentMillis - previousMillis[home] >= intervals[home]) {
       previousMillis[home] = currentMillis;
-      if (!isFadingIn[home]) {
-          offInterval[home] = random(300000, 900000); // Reset off interval for next cycle
+
+      // Toggle the state of the home
+      bool newState = !homeState[home];
+
+      // Fade out if currently on, fade in if currently off
+      if (homeState[home]) {
+        fadeLights(home, homeColors[home], false); // Fade out
+      } else {
+        fadeLights(home, homeColors[home], true); // Fade in
       }
-    }
-    if (isFadingIn[home]) {
-        fadeLights(home);
+
+      homeState[home] = newState;
+
+      // Update the interval for this home based on its new state
+      updateIntervalForHome(home, homeState[home]);
     }
   }
-  FastLED.show();
 }
 
-void toggleHomeLights(int home) {
-  int startLED = (home == 0) ? 0 : 4 + 2 * (home - 1);
-  int ledCount = (home == 0) ? 4 : 2;
 
-  if (!isFadingIn[home]) {
-      brightness[home] = 0;
-      isFadingIn[home] = true;
+// Function to update the interval for a specific home
+void updateIntervalForHome(int home, bool isCurrentlyOn) {
+
+
+  if (isCurrentlyOn) {
+    // If the lights are currently on, set a shorter interval for turning them off
+    long baseInterval = 15 * 1000; // 15 minutes in milliseconds 60000 1000 for dubuging
+    long variation = random(0, 30000); // Variation of up to 30 seconds
+    intervals[home] = baseInterval + variation; 
+
+
   } else {
-      for(int i = startLED; i < startLED + ledCount; i++) {
-          leds[i] = CRGB::Black; // Turn off lights
-      }
-      isFadingIn[home] = false;
+    // If the lights are currently off, set a longer interval for turning them on
+    long baseInterval = 1 * 1000; // 15 minutes in milliseconds 60000 1000 for dubuging
+    long variation = random(0, 1000); // Variation of up to 30 seconds
+    intervals[home] = baseInterval + variation; 
   }
 }
 
-void fadeLights(int home) {
-  int startLED = (home == 0) ? 0 : 4 + 2 * (home - 1);
-  int ledCount = (home == 0) ? 4 : 2;
-  
-  brightness[home] += fadeAmount;
-  if (brightness[home] <= 0 || brightness[home] >= 255) {
-      fadeAmount = -fadeAmount;  // Reverse the direction of the fading at the ends
-  }
+void fadeLights(int home, CRGB targetColor, bool fadeIn) {
+  int ledStartIndex = (home == 0) ? 0 : 4 + 2 * (home - 1);
+  int numLedsInHome = (home == 0) ? 4 : 2;
+  int fadeSteps = 50; // Number of steps in the fade
+  int fadeDelay = 10; // Milliseconds between fade steps
 
-  CRGB color = dimColor(homeColors[home], brightness[home]);
-  for(int i = startLED; i < startLED + ledCount; i++) {
-      leds[i] = color;
-  }
-}
+  for (int step = 0; step <= fadeSteps; step++) {
+    float fadeFactor = fadeIn ? (float)step / fadeSteps : (float)(fadeSteps - step) / fadeSteps;
 
-CRGB dimColor(CRGB color, int brightness) {
-  // Adjust brightness
-  color.fadeToBlackBy(255 - brightness);
-  return color;
+    for (int i = 0; i < numLedsInHome; i++) {
+      leds[ledStartIndex + i] = targetColor;
+      leds[ledStartIndex + i].nscale8(fadeFactor * 255);
+    }
+
+    FastLED.show();
+    delay(fadeDelay);
+  }
 }
