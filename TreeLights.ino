@@ -1,34 +1,26 @@
 #include <FastLED.h>
-
-#define LED_PIN     6
-#define BRIGHTNESS  64
-#define LED_TYPE    WS2812
-#define COLOR_ORDER GRB
-#define NUM_HOMES   4 // Number of homes
-
-#define NUM_LEDS    (4 + 2 * (NUM_HOMES - 1)) // Calculate number of LEDs
+#include "config.h"
 
 CRGB leds[NUM_LEDS];
 CRGB homeColors[NUM_HOMES]; // Array to store the color of each home
 unsigned long previousMillis[NUM_HOMES]; // Store last time each home's LED was updated
 long intervals[NUM_HOMES]; // Intervals at which each home blinks (milliseconds)
 bool homeState[NUM_HOMES]; // Array to store the state (on/off) of each home
+CRGB lastColor[NUM_HOMES]; // Array to store the last color of each home
+
 
 void setup() {
   FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
   FastLED.setBrightness(BRIGHTNESS);
-  fill_solid(leds, NUM_LEDS, CRGB::White);
-  FastLED.show();
-  delay(1000);
   FastLED.clear();
   FastLED.show();
 
   // Define the color and initial interval for each home
   homeColors[0] = CRGB::Red; // First home color
-  intervals[0] = 500; // Initial interval for first home
+  intervals[0] = 30000; // Initial interval for first home
   for (int i = 1; i < NUM_HOMES; i++) {
     homeColors[i] = CRGB::Green; // Other homes color
-    intervals[i] = 500 + 100 * i; // Different initial interval for each home
+    intervals[i] = 30000 + 10000 * i; // Different initial interval for each home
   }
 
   memset(previousMillis, 0, sizeof(previousMillis)); // Initialize all previousMillis values to 0
@@ -54,7 +46,7 @@ void loop() {
       } else {
         // If turning off, first fade out, then change the color
         fadeLights(home, homeColors[home], false); // Fade out
-        homeColors[home] = generateNewColor(); // Assign a new color for next time
+        homeColors[home] = generateNewColor(home); // Assign a new color for next time
       }
 
       // Update the interval for this home based on its new state
@@ -64,30 +56,28 @@ void loop() {
 }
 
 
-// Function to update the interval for a specific home
 void updateIntervalForHome(int home, bool isCurrentlyOn) {
-
+  long baseInterval, variation;
 
   if (isCurrentlyOn) {
-    // If the lights are currently on, set a shorter interval for turning them off
-    long baseInterval = 10 * 60000; // 15 minutes in milliseconds 60000 1000 for dubuging
-    long variation = random(0, 20 * 60000); // Variation of up to 30 seconds
-    intervals[home] = baseInterval + variation; 
-
-
+    // Use the configurations from config.h
+    baseInterval = ON_BASE_INTERVAL; // Base interval when lights are on
+    variation = random(0, ON_VARIATION); // Variation interval when lights are on
   } else {
-    // If the lights are currently off, set a longer interval for turning them on
-    long baseInterval = 1 * 60000; // 15 minutes in milliseconds 60000 1000 for dubuging
-    long variation = random(0, 4 * 60000); // Variation of up to 30 seconds
-    intervals[home] = baseInterval + variation; 
+    // Use the configurations from config.h
+    baseInterval = OFF_BASE_INTERVAL; // Base interval when lights are off
+    variation = random(0, OFF_VARIATION); // Variation interval when lights are off
   }
+
+  intervals[home] = baseInterval + variation; 
 }
+
 
 void fadeLights(int home, CRGB targetColor, bool fadeIn) {
   int ledStartIndex = (home == 0) ? 0 : 4 + 2 * (home - 1);
   int numLedsInHome = (home == 0) ? 4 : 2;
   int fadeSteps = 50; // Number of steps in the fade
-  int fadeDelay = 10; // Milliseconds between fade steps
+  int fadeDelay = 12; // Milliseconds between fade steps
 
   for (int step = 0; step <= fadeSteps; step++) {
     float fadeFactor = fadeIn ? (float)step / fadeSteps : (float)(fadeSteps - step) / fadeSteps;
@@ -102,17 +92,15 @@ void fadeLights(int home, CRGB targetColor, bool fadeIn) {
   }
 }
 
-CRGB generateNewColor() {
-  // Define a Christmas palette
-  const CRGB christmasPalette[] = {
-    CRGB::Red,
-    CRGB::Green,
-    CRGB::Purple,
-    CRGB::Gold,
-    CRGB::Blue
-  };
-  const int christmasPaletteSize = sizeof(christmasPalette) / sizeof(christmasPalette[0]);
 
-  // Pick and return a random color from the Christmas palette
-  return christmasPalette[random(0, christmasPaletteSize)];
+CRGB generateNewColor(int home) {
+    const int christmasPaletteSize = sizeof(christmasPalette) / sizeof(christmasPalette[0]);
+
+    CRGB newColor;
+    do {
+        newColor = christmasPalette[random(0, christmasPaletteSize)];
+    } while(newColor == lastColor[home]);
+
+    lastColor[home] = newColor; // Update the last color for this home
+    return newColor;
 }
