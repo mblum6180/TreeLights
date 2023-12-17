@@ -17,10 +17,10 @@ void setup() {
 
   // Define the color and initial interval for each home
   homeColors[0] = CRGB::Red; // First home color
-  intervals[0] = 30000; // Initial interval for first home
+  intervals[0] = 500; // Initial interval for first home
   for (int i = 1; i < NUM_HOMES; i++) {
     homeColors[i] = CRGB::Green; // Other homes color
-    intervals[i] = 30000 + 10000 * i; // Different initial interval for each home
+    intervals[i] = 42000 + 18000 * i; // Different initial interval for each home
   }
 
   memset(previousMillis, 0, sizeof(previousMillis)); // Initialize all previousMillis values to 0
