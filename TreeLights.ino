@@ -17,7 +17,7 @@ void setup() {
 
   // Define the color and initial interval for each home
   homeColors[0] = CRGB::Red; // First home color
-  lastColor[0] = homeColors; // Initial last color
+  lastColor[0] = homeColors[0] // Initial last color
   intervals[0] = 500; // Initial interval for first home
   for (int i = 1; i < NUM_HOMES; i++) {
     homeColors[i] = CRGB::Green; // Other homes color
