@@ -16,12 +16,10 @@ void setup() {
   FastLED.show();
 
   // Define the color and initial interval for each home
-  homeColors[0] = CRGB::Red; // First home color
-  lastColor[0] = homeColors[0]; // Initial last color
+  homeColors[0] = lastColor[0] = CRGB::Red; // Set initial and last color to Red for the first home
   intervals[0] = 500; // Initial interval for first home
   for (int i = 1; i < NUM_HOMES; i++) {
-    homeColors[i] = CRGB::Green; // Other homes color
-    lastColor[i] = homeColors[i];//  Initial last color
+    homeColors[i] = lastColor[i] = CRGB::Green; // Set initial and last color to Green for other homes
     intervals[i] = 42000 + 18000 * i; // Different initial interval for each home
   }
 
